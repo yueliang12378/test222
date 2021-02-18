@@ -1,0 +1,9 @@
+?key=value  ->query参数
+
+params
+是在路由的参数
+例如
+app.get('post/:id')...
+:id是参数 （参数路由）
+如何取得这个参数呢？ 如下
+const id =req.params.id.
