@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>取消请求</title>
+</head>
+
+<body>
+    <button onclick="getProducts1()">获取商品列表1</button><br>
+    <button onclick="getProducts2()">获取商品列表2</button><br>
+    <button onclick="cancelReq()">取消请求</button><br>
+
+    <script src="https://cdn.bootcss.com/axios/0.19.0/axios.js"></script>
+    <script>
+        //利用拦截器
+        let cancel = null; // 用于保存取消请求的函数
+        //添加请求拦截器 (请求拦截器是在 请求发出前执行的)
+        axios.interceptors.request.use((config) => {
+            // 在准备发请求前, 取消未完成的请求
+            if (cancel) { //如果cancel存在
+                cancel('取消请求') //这个cancel('取消请求')是调用函数(取消请求)并设置error.message 
+            }
+            // 添加一个cancelToken的配置
+            config.cancelToken = new axios.CancelToken((c) => {
+                // 保存取消函数, 用于之后可能需要取消当前请求
+                cancel = c; //用cancel存储c
+            })
+            return config; //必须要返回config
+        })
+
+        //设置响应拦截器
+        axios.interceptors.response.use((response) => {
+                //这里是没有失败的
+                cancel = null; //将取消器清零
+                return response; //这里要返回
+            },
+            error => {
+                if (axios.isCancel(error)) {
+                    //如果是取消请求而产生的错误，中断Promise链接(返回一个状态值为pedding的Promise)
+                    console.log('取消请求的错误：', error.message);
+                    return new Promise({}); //状态为pedding，中断错误向下传递
+                } else { //这里是请求出错了
+                    cancel = null;
+                    //将错误向下传递
+                    return Promise.reject(error);
+                }
+            }
+        );
+
+        function getProducts1() {
+            axios('http://localhost:4000/getproducts1')
+                .then( //异步执行的
+                    response => {
+                        console.log('请求1成功了', response.data)
+                    },
+                    error => {
+                        console.log('请求1失败了', error.message)
+
+                    }
+                )
+        }
+
+        function getProducts2() {
+            axios('http://localhost:4000/getproducts2')
+                .then(
+                    response => {
+                        console.log('请求2成功了', response.data)
+                    },
+                    error => {
+                        console.log('请求2失败了', error.message)
+                    }
+                )
+        }
+
+        function cancelReq() {
+            // alert('取消请求')
+            // 执行取消请求的函数
+            if (typeof cancel === 'function') {
+                cancel('强制取消请求')
+            } else {
+                console.log('没有可取消的请求')
+            }
+        }
+    </script>
+</body>
+
+</html>

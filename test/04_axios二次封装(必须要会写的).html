@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.bootcss.com/nprogress/0.2.0/nprogress.css">
+    <title>Document</title>
+</head>
+<!-- nprogress 实现一个加载动画 还不错 -->
+<script src="https://cdn.bootcss.com/nprogress/0.2.0/nprogress.js"></script>
+<!-- qs 用于解析对象，将其变成urlencoded -->
+<script src="https://cdn.bootcss.com/qs/6.9.0/qs.js"></script>
+<script src="https://cdn.bootcss.com/axios/0.19.0/axios.js"></script>
+
+<body>
+    <div>
+        <button onclick="getPosts()">获取文章列表</button>
+        <button onclick="addPost()">添加文章</button>
+    </div>
+    <!-- 
+        1). 统一进行请求配置
+        2). 请求过程中loading提示
+        3). 请求体参数以urlencoded形式传递
+        4). 请求成功的value不再是response, 而是response.data
+        5). 请求失败统一进行提示处理, 每个请求不需要单独处理
+      -->
+</body>
+<!-- 这个script 用来设置配置(拦截器之类的) -->
+<script>
+    //1.进行统一配置(这里我们用axios.create来创建 试试)
+    const instance = axios.create({
+        baseURL: 'http://localhost:4000',
+        timeout: 15000 //指定超时时间为15s
+    });
+
+    //设定请求拦截器
+    instance.interceptors.request.use((config) => {
+        // 2). 请求过程中loading提示
+        // 显示loading动画
+        NProgress.start()
+
+        //由于我们构建的server服务器，不支持json格式，我们要将json格式转换成urlencoded格式
+        //利用工具包Qs
+        // 对data参数数据进行处理: 转换为urlencoded格式(原本是对象)
+        if (config.data instanceof Object) {
+            config.data = Qs.stringify(config.data); //转换成urlencoded了
+        }
+
+        return config;
+    });
+
+    //设置响应拦截器
+    instance.interceptors.response.use(
+        response => {
+            NProgress.done() //显示loading动画 加载完毕
+
+            // 4). 请求成功的value不再是response, 而是response.data
+            return response.data; //我们要的就是data数据 data数据里面还有data 在后面我们响应我们会再取。
+        },
+        error => {
+            NProgress.done() //显示loading动画 加载完毕
+            alert(error.message); //弹出错误
+            return new Promise(() => {}); //返回一个pedding的promise对象 不让错误向下传递了
+        }
+    );
+</script>
+
+<!-- 下面这个script来定义绑定的函数 -->
+<script>
+    function getPosts() {
+        instance.get('/post').then(
+            result => {
+                console.log(result.data);
+            },
+            // 5). 请求失败统一进行提示处理, 每个请求不需要单独处理
+            error => { //这里实际上是用不到的，在拦截器中处理了错误了
+                // 并且返回了 pedding状态的promise 中断了链，错误不会传递下来。
+                alert(error.message);
+            }
+        );
+    }
+
+    //下面这个换一种方法来写 因为我们在拦截器中，设置了错误统一处理 之类不用处理错误了
+    async function addPost() {
+        const result = await instance.post('/post', { //这个不对失败进行处理，如果有的话要记得捕获
+            title: 'newTitle',
+            author: 'newAuthor'
+        })
+        console.log(result.data); //这行代码 相当于在.then里面的成功回调
+    }
+</script>
+
+</html>

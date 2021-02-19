@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>axios的处理链流程</title>
+</head>
+
+<body>
+
+    <script src="https://cdn.bootcss.com/axios/0.19.0/axios.js"></script>
+    <script>
+        /* 
+                        requestInterceptors: [{fulfilled1(){}, rejected1(){}}, {fulfilled2(){}, rejected2(){}}]
+                        responseInterceptors: [{fulfilled11(){}, rejected11(){}}, {fulfilled22(){}, rejected22(){}}]
+                        chain: [
+                        fulfilled2, rejected2, fulfilled1, rejected1, 
+                        dispatchReqeust, undefined, 
+                        fulfilled11, rejected11, fulfilled22, rejected22
+                                                    
+                        ]
+                        promise链回调: config 
+                        => (fulfilled2, rejected2) => (fulfilled1, rejected1)   // 请求拦截器处理
+                        => (dispatchReqeust, undefined) // 发请求
+                        => (fulfilled11, rejected11) => (fulfilled22, rejected22) // 响应拦截器处理
+                       => (onResolved, onRejected) // axios发请求回调处理
+                       */
+        /*请求拦截器(请求拦截器执行完，才发出请求)
+        有多个请求拦截器的话，后面定义的先执行(因为源码，请求拦截器总是往左存入数据，
+        也就是，后定义的拦截器是在左边，而forEach是从左往右遍历的，，所以后面定义的先执行
+        看文档源码分析的-拦截器那( 上面的代码注释，就是这里的执行器 源码执行的过程。))
+        1.是什么？ 在真正在发送请求执行的回调函数
+         
+        2.作用
+            对请求的配置做一些处理：data，header，界面提示等
+            对请求检查，不满足条件不发送请求
+        */
+        // 添加请求拦截器(回调函数)
+        axios.interceptors.request.use(
+            config => {
+                console.log('request interceptor1 onResolved()')
+                return config
+            },
+            error => {
+                console.log('request interceptor1 onRejected()')
+                return Promise.reject(error);
+            }
+        )
+        axios.interceptors.request.use(
+            config => {
+                console.log('request interceptor2 onResolved()')
+                return config
+            },
+            error => {
+                console.log('request interceptor2 onRejected()')
+                return Promise.reject(error);
+            }
+        )
+
+        /*相应拦截器
+        1.是什么？ 得到响应后执行的回调函数(在外层的回调)
+         
+        2.作用
+            对强求成功的数据进行处理
+            对请求失败的数据进行处理
+
+        顺序
+        请求拦截器 后面定义的先执行(好像是这样的)
+        */
+
+        // 添加响应拦截器
+        axios.interceptors.response.use(
+            response => {
+                console.log('response interceptor1 onResolved()')
+                return response
+            },
+            function(error) {
+                console.log('response interceptor1 onRejected()')
+                return Promise.reject(error);
+            }
+        )
+        axios.interceptors.response.use(
+            response => {
+                console.log('response interceptor2 onResolved()')
+                return response
+            },
+            function(error) {
+                console.log('response interceptor2 onRejected()')
+                return Promise.reject(error);
+            }
+        )
+
+        axios.get('http://localhost:3000/posts')
+            .then(response => {
+                console.log('data', response.data)
+            })
+            .catch(error => {
+                console.log('error', error.message)
+            })
+
+        /* axios.get('http://localhost:/posts2')
+          .then(response => {
+            console.log('data', response.data)
+          })
+          .catch(error => {
+            console.log('error', error.message)
+          }) 
+        */
+    </script>
+</body>
+
+</html>
